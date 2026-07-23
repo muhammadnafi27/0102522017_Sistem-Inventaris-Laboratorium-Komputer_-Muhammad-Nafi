@@ -62,7 +62,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
  * POST /api/auth/logout
  * Membersihkan cookie token. Tidak perlu async karena tidak ada I/O.
  */
-export const logout = (req: Request, res: Response): void => {
+export const logout = (_req: Request, res: Response): void => {
   res.clearCookie(NAMA_COOKIE, { path: '/' });
   res.status(200).json({
     sukses: true,

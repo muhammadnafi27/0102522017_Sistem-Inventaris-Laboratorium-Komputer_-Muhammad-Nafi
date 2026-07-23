@@ -5,7 +5,7 @@ import pool from '../konfigurasi/database';
 const ruteKesehatan = Router();
 
 // GET /api/kesehatan - Memeriksa status server dan database
-ruteKesehatan.get('/kesehatan', async (req: Request, res: Response) => {
+ruteKesehatan.get('/kesehatan', async (_req: Request, res: Response) => {
   try {
     // Mencoba melakukan query sederhana ke database
     await pool.query('SELECT 1');

@@ -4,6 +4,9 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import ruteKesehatan from './rute/kesehatan.rute';
 import ruteAutentikasi from './rute/autentikasi.rute';
+import ruteKategori from './rute/kategori.rute';
+import ruteBarang from './rute/barang.rute';
+import ruteUser from './rute/user.rute';
 import { AppError } from './utilitas/AppError';
 
 // Inisialisasi Express app
@@ -24,6 +27,9 @@ app.use('/unggahan', express.static('unggahan'));
 
 // Rute API
 app.use('/api/auth', ruteAutentikasi);
+app.use('/api/users', ruteUser);
+app.use('/api/kategori', ruteKategori);
+app.use('/api/barang', ruteBarang);
 app.use('/api', ruteKesehatan);
 
 // Endpoint uji middleware role — HANYA aktif di mode development
