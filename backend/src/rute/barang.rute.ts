@@ -1,40 +1,51 @@
-import { Router } from 'express';
-import {
-  dapatkanSemua,
-  dapatkanSatu,
-  tambahBarang,
-  perbaruiBarang,
-  hapusBarang
-} from '../kontroler/barang.kontroler';
-import { autentikasi } from '../middleware/autentikasi.middleware';
-import { izinkanRole } from '../middleware/role.middleware';
-import { uploadBarang } from '../utilitas/upload';
+import { Router } from "express";
 
-const router = Router();
+import { barangController } from "@/controller/barang.controller";
+import { autentikasi } from "@/middleware/autentikasi";
+import { authorizeRoles } from "@/middleware/otorisasi";
+import { unggahFotoBarang } from "@/middleware/unggah";
+import { tanganiHasilValidasi } from "@/middleware/validasi-hasil";
+import { validasiBarang, validasiQueryDaftarBarang } from "@/validasi/barang.validasi";
+import { validasiParamId } from "@/validasi/bersama.validasi";
 
-// Semua rute barang membutuhkan login
-router.use(autentikasi);
+const rute = Router();
 
-// Viewer, Operator, Admin: Bisa baca
-router.get('/', dapatkanSemua);
-router.get('/:id', dapatkanSatu);
+// Seluruh endpoint barang membutuhkan login; daftar/detail terbuka untuk semua role (termasuk viewer).
+rute.use(autentikasi);
 
-// Operator, Admin: Bisa tambah & edit dengan upload foto
-router.post(
-  '/', 
-  izinkanRole('admin', 'operator'), 
-  uploadBarang.single('foto'), 
-  tambahBarang
+rute.get("/", validasiQueryDaftarBarang, tanganiHasilValidasi, barangController.daftar);
+
+rute.get("/:id", validasiParamId, tanganiHasilValidasi, barangController.detail);
+
+// unggahFotoBarang (Multer) wajib berjalan sebelum validator body karena field non-file
+// pada multipart/form-data baru terisi ke req.body setelah Multer memprosesnya. Request
+// JSON biasa (tanpa foto) tetap kompatibel - Multer melewatkannya begitu saja.
+rute.post(
+  "/",
+  authorizeRoles("admin", "operator"),
+  unggahFotoBarang,
+  validasiBarang,
+  tanganiHasilValidasi,
+  barangController.buat,
 );
 
-router.put(
-  '/:id', 
-  izinkanRole('admin', 'operator'), 
-  uploadBarang.single('foto'), 
-  perbaruiBarang
+rute.put(
+  "/:id",
+  authorizeRoles("admin", "operator"),
+  unggahFotoBarang,
+  validasiParamId,
+  validasiBarang,
+  tanganiHasilValidasi,
+  barangController.perbarui,
 );
 
-// Hanya Admin: Bisa hapus
-router.delete('/:id', izinkanRole('admin'), hapusBarang);
+// Hapus barang hanya admin - operator boleh create/update tetapi tidak boleh delete.
+rute.delete(
+  "/:id",
+  authorizeRoles("admin"),
+  validasiParamId,
+  tanganiHasilValidasi,
+  barangController.hapus,
+);
 
-export default router;
+export default rute;

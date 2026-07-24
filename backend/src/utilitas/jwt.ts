@@ -1,51 +1,32 @@
-import jwt, { SignOptions } from 'jsonwebtoken';
-import { UserPayload } from '../tipe/autentikasi';
-import { CookieOptions } from 'express';
+import jwt, { type SignOptions } from "jsonwebtoken";
 
-// Nilai yang aman dan terbaca diambil dari env, dengan fallback hanya untuk development
-const rahasiaJwt = process.env.JWT_SECRET;
-if (!rahasiaJwt) {
-  throw new Error('[jwt.ts] JWT_SECRET tidak ditemukan di environment variables. Atur nilai ini di file .env');
+import { environment } from "@/konfigurasi/environment";
+import type { RolePengguna } from "@/tipe/basis-data";
+
+// Isi payload JWT sengaja minimal: id (sub), email, dan role secukupnya untuk otorisasi.
+// Password tidak pernah dimasukkan ke payload karena JWT hanya di-encode, bukan dienkripsi.
+export interface PayloadToken {
+  sub: number;
+  email: string;
+  role: RolePengguna;
 }
 
-const opsiSign: SignOptions = {
-  // Masa berlaku diambil dari .env, fallback ke 8 jam jika tidak dikonfigurasi
-  expiresIn: (process.env.JWT_EXPIRES_IN as SignOptions['expiresIn']) ?? '8h',
-};
+// Menandatangani JWT baru. Masa berlaku default 8 jam, atau lebih panjang (7 hari) bila
+// pengguna mencentang "Ingat saya" saat login.
+export function buatToken(payload: PayloadToken, ingatSaya: boolean): string {
+  const masaBerlaku = ingatSaya ? environment.jwt.expiresInIngatSaya : environment.jwt.expiresIn;
 
-/**
- * Membuat token akses JWT yang ditandatangani dengan secret dari env.
- * @param payload Data pengguna yang disisipkan ke token (tidak termasuk password)
- * @returns String JWT yang valid
- */
-export const buatTokenAkses = (payload: UserPayload): string => {
-  // Buat payload bersih: hanya sertakan field yang diperlukan
-  const payloadBersih: UserPayload = {
-    id: payload.id,
-    nama: payload.nama,
-    email: payload.email,
-    role: payload.role,
-  };
-  return jwt.sign(payloadBersih, rahasiaJwt, opsiSign);
-};
+  // Cast diperlukan karena tipe StringValue dari package "ms" lebih ketat daripada
+  // string biasa; format durasi (mis. "8h", "7d") sudah ditentukan lewat .env.
+  const opsi: SignOptions = { expiresIn: masaBerlaku as SignOptions["expiresIn"] };
 
-/**
- * Memverifikasi dan mendekode token JWT.
- * Akan melempar error jika token tidak valid atau kadaluarsa.
- * @param token Token JWT dari cookie atau header
- * @returns Payload user yang telah terverifikasi
- */
-export const verifikasiTokenAkses = (token: string): UserPayload => {
-  return jwt.verify(token, rahasiaJwt) as UserPayload;
-};
+  return jwt.sign(payload, environment.jwt.secret, opsi);
+}
 
-/**
- * Opsi cookie HttpOnly yang konsisten untuk set dan clear cookie JWT.
- * Secure hanya aktif di production agar bisa diuji via HTTP di development.
- */
-export const opsiCookieToken: CookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax',
-  path: '/',
-};
+// Memverifikasi dan mendekode JWT. Melempar TokenExpiredError/JsonWebTokenError bawaan
+// library bila token tidak valid - ditangkap secara spesifik oleh middleware autentikasi.
+// Hasil decode jwt.verify bertipe longgar (string | JwtPayload) sehingga di-cast lewat
+// unknown; bentuk payload sudah kita kendalikan sendiri sejak buatToken() menandatanganinya.
+export function verifikasiToken(token: string): PayloadToken {
+  return jwt.verify(token, environment.jwt.secret) as unknown as PayloadToken;
+}

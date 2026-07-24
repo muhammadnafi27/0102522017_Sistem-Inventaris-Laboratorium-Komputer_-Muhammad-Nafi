@@ -1,28 +1,28 @@
-# Dependencies
+# Dependency
 node_modules/
-**/node_modules/
 
-# Build outputs
-dist/
-**/dist/
-build/
-**/build/
-.next/
-**/.next/
-out/
-**/out/
-
-# Environment files
+# Environment/secret - jangan pernah commit file .env asli
 .env
 .env.local
 .env.*.local
-*.env
-!*.env.example
 
-# Temporary / Uploads / Logs
-unggahan/
-**/unggahan/
+# Build output
+frontend/.next/
+backend/dist/
+*.tsbuildinfo
+
+# Test coverage
 coverage/
-**/coverage/
+
+# Log
 *.log
+npm-debug.log*
+
+# File upload barang - hanya default-barang.png yang dipertahankan pada repository
+backend/unggahan/barang/*
+!backend/unggahan/barang/default-barang.png
+
+# Editor/OS
 .DS_Store
+Thumbs.db
+.claude/

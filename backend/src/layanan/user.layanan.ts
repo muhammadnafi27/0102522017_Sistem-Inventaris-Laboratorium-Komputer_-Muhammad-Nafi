@@ -1,147 +1,211 @@
-import bcrypt from 'bcrypt';
-import {
-  cariUserBerdasarkanEmail,
-  cariUserBerdasarkanId,
-  dapatkanSemuaUser,
-  buatUserOlehAdmin,
-  perbaruiUserByAdmin,
-  perbaruiPasswordUser,
-  hapusUserById,
-  hitungJumlahAdmin,
-  ParameterPencarianUser,
-  HasilPaginasiUser,
-  UserPublic,
-} from '../repositori/user.repositori';
-import { AppError } from '../utilitas/AppError';
-import { skemaBuatUser, skemaEditUser, skemaResetPassword } from '../validasi/user.validasi';
+import bcrypt from "bcrypt";
 
-const BCRYPT_SALT_ROUNDS = 12;
+import { aktivitasRepository } from "@/repository/aktivitas.repository";
+import { usersRepository } from "@/repository/users.repository";
+import type { RolePengguna } from "@/tipe/basis-data";
+import { KesalahanAplikasi } from "@/tipe/kesalahan-aplikasi";
+import { keAmanPengguna, type PenggunaAman } from "@/tipe/pengguna-aman";
+import type { MetaPagination } from "@/utilitas/respons";
+import { jalankanTransaksi } from "@/utilitas/transaksi";
 
-class UserLayanan {
-  async dapatkanSemua(params: ParameterPencarianUser): Promise<HasilPaginasiUser> {
-    return await dapatkanSemuaUser(params);
-  }
+const BCRYPT_COST = 10;
+const BATAS_DEFAULT = 10;
+const BATAS_MAKSIMUM = 100;
 
-  async dapatkanBerdasarkanId(id: number): Promise<UserPublic> {
-    const user = await cariUserBerdasarkanId(id);
-    if (!user) {
-      throw new AppError('Pengguna tidak ditemukan', 404);
-    }
-    return {
-      id: user.id,
-      nama: user.nama,
-      email: user.email,
-      role: user.role,
-      created_at: user.created_at,
-      updated_at: user.updated_at,
-    };
-  }
+export interface QueryDaftarUser {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: RolePengguna;
+}
 
-  async buatUser(data: unknown): Promise<UserPublic> {
-    const hasilValidasi = skemaBuatUser.safeParse(data);
-    if (!hasilValidasi.success) {
-      const pesanError = hasilValidasi.error.issues.map(err => err.message).join(', ');
-      throw new AppError(pesanError, 400);
-    }
+export interface DataBuatUserMasuk {
+  nama: string;
+  email: string;
+  password: string;
+  role: RolePengguna;
+}
 
-    const { nama, email, password, role } = hasilValidasi.data;
+export interface DataPerbaruiUserMasuk {
+  nama: string;
+  email: string;
+  role: RolePengguna;
+}
 
-    // Cek keunikan email
-    const emailAda = await cariUserBerdasarkanEmail(email);
-    if (emailAda) {
-      throw new AppError('Email sudah terdaftar dalam sistem', 409);
-    }
+export interface DataResetPasswordMasuk {
+  passwordBaru: string;
+  konfirmasiPassword: string;
+}
 
-    // Hash password bcrypt cost 12
-    const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-
-    const idBaru = await buatUserOlehAdmin(nama, email, passwordHash, role);
-
-    console.log(`[USER-AUDIT] Admin membuat akun baru: ID=${idBaru}, Email=${email}, Role=${role}`);
-
-    return await this.dapatkanBerdasarkanId(idBaru);
-  }
-
-  async perbaruiUser(id: number, data: unknown): Promise<UserPublic> {
-    const userTarget = await cariUserBerdasarkanId(id);
-    if (!userTarget) {
-      throw new AppError('Pengguna tidak ditemukan', 404);
-    }
-
-    const hasilValidasi = skemaEditUser.safeParse(data);
-    if (!hasilValidasi.success) {
-      const pesanError = hasilValidasi.error.issues.map(err => err.message).join(', ');
-      throw new AppError(pesanError, 400);
-    }
-
-    const { nama, email, role } = hasilValidasi.data;
-
-    // Cek duplikasi email (jika diubah ke email user lain)
-    const emailAda = await cariUserBerdasarkanEmail(email);
-    if (emailAda && emailAda.id !== id) {
-      throw new AppError('Email sudah digunakan oleh pengguna lain', 409);
-    }
-
-    // Proteksi Keamanan Admin Terakhir: Jika role diubah dari admin ke role lain
-    if (userTarget.role === 'admin' && role !== 'admin') {
-      const jumlahAdmin = await hitungJumlahAdmin();
-      if (jumlahAdmin <= 1) {
-        throw new AppError('Perubahan role ditolak. Sistem harus memiliki minimal satu admin aktif.', 409);
-      }
-    }
-
-    await perbaruiUserByAdmin(id, nama, email, role);
-
-    console.log(`[USER-AUDIT] Admin memperbarui akun: ID=${id}, Email=${email}, RoleBaru=${role}`);
-
-    return await this.dapatkanBerdasarkanId(id);
-  }
-
-  async hapusUser(idTarget: number, idAdminLogin: number): Promise<void> {
-    // Proteksi 1: Larangan menghapus diri sendiri
-    if (idTarget === idAdminLogin) {
-      throw new AppError('Anda tidak dapat menghapus akun Anda sendiri', 400);
-    }
-
-    const userTarget = await cariUserBerdasarkanId(idTarget);
-    if (!userTarget) {
-      throw new AppError('Pengguna tidak ditemukan', 404);
-    }
-
-    // Proteksi 2: Larangan menghapus admin terakhir
-    if (userTarget.role === 'admin') {
-      const jumlahAdmin = await hitungJumlahAdmin();
-      if (jumlahAdmin <= 1) {
-        throw new AppError('Penghapusan ditolak. Tidak dapat menghapus admin terakhir dalam sistem.', 409);
-      }
-    }
-
-    await hapusUserById(idTarget);
-
-    console.log(`[USER-AUDIT] Admin (ID=${idAdminLogin}) menghapus akun ID=${idTarget} (${userTarget.email})`);
-  }
-
-  async resetPassword(idTarget: number, data: unknown): Promise<void> {
-    const userTarget = await cariUserBerdasarkanId(idTarget);
-    if (!userTarget) {
-      throw new AppError('Pengguna tidak ditemukan', 404);
-    }
-
-    const hasilValidasi = skemaResetPassword.safeParse(data);
-    if (!hasilValidasi.success) {
-      const pesanError = hasilValidasi.error.issues.map(err => err.message).join(', ');
-      throw new AppError(pesanError, 400);
-    }
-
-    const { password_baru } = hasilValidasi.data;
-
-    // Hash password baru cost 12
-    const passwordHash = await bcrypt.hash(password_baru, BCRYPT_SALT_ROUNDS);
-
-    await perbaruiPasswordUser(idTarget, passwordHash);
-
-    console.log(`[USER-SECURITY] Password untuk user ID=${idTarget} (${userTarget.email}) berhasil direset oleh Admin`);
+// Memastikan aksi yang menghapus/menurunkan role admin tertentu tidak membuat sistem
+// kehilangan admin aktif terakhir (aturan bisnis PRD 3.2).
+async function pastikanBukanAdminTerakhir(pesan: string): Promise<void> {
+  const jumlahAdmin = await usersRepository.hitungAdmin();
+  if (jumlahAdmin <= 1) {
+    throw new KesalahanAplikasi(409, pesan);
   }
 }
 
-export default new UserLayanan();
+export const userLayanan = {
+  async daftar(query: QueryDaftarUser): Promise<{ data: PenggunaAman[]; meta: MetaPagination }> {
+    const halaman = Math.max(1, query.page ?? 1);
+    const batas = Math.min(BATAS_MAKSIMUM, Math.max(1, query.limit ?? BATAS_DEFAULT));
+    const filter = { search: query.search?.trim() || undefined, role: query.role };
+
+    const [baris, totalData] = await Promise.all([
+      usersRepository.cariDenganFilter({ ...filter, halaman, batas }),
+      usersRepository.hitungDenganFilter(filter),
+    ]);
+
+    const totalHalaman = totalData === 0 ? 1 : Math.ceil(totalData / batas);
+
+    return { data: baris.map(keAmanPengguna), meta: { halaman, batas, totalData, totalHalaman } };
+  },
+
+  async detail(id: number): Promise<PenggunaAman> {
+    const baris = await usersRepository.cariById(id);
+    if (!baris) {
+      throw new KesalahanAplikasi(404, "Pengguna tidak ditemukan.");
+    }
+    return keAmanPengguna(baris);
+  },
+
+  async buat(data: DataBuatUserMasuk, penggunaAdminId: number): Promise<PenggunaAman> {
+    const email = data.email.trim().toLowerCase();
+
+    const sudahAda = await usersRepository.cariByEmail(email);
+    if (sudahAda) {
+      throw new KesalahanAplikasi(409, "Email sudah digunakan.", [
+        { field: "email", pesan: "Email sudah digunakan." },
+      ]);
+    }
+
+    const passwordHash = await bcrypt.hash(data.password, BCRYPT_COST);
+
+    const id = await jalankanTransaksi(async (koneksi) => {
+      const idBaru = await usersRepository.buat(
+        { nama: data.nama.trim(), email, password: passwordHash, role: data.role },
+        koneksi,
+      );
+      await aktivitasRepository.catat(
+        {
+          user_id: penggunaAdminId,
+          aksi: "CREATE",
+          entitas: "user",
+          entitas_id: idBaru,
+          detail: `Menambahkan user ${email} dengan role ${data.role}.`,
+          ip_address: null,
+        },
+        koneksi,
+      );
+      return idBaru;
+    });
+
+    return this.detail(id);
+  },
+
+  async perbarui(
+    id: number,
+    data: DataPerbaruiUserMasuk,
+    penggunaAdminId: number,
+  ): Promise<PenggunaAman> {
+    const existing = await usersRepository.cariById(id);
+    if (!existing) {
+      throw new KesalahanAplikasi(404, "Pengguna tidak ditemukan.");
+    }
+
+    const email = data.email.trim().toLowerCase();
+    const duplikat = await usersRepository.cariByEmail(email);
+    if (duplikat && duplikat.id !== id) {
+      throw new KesalahanAplikasi(409, "Email sudah digunakan.", [
+        { field: "email", pesan: "Email sudah digunakan." },
+      ]);
+    }
+
+    // Jangan sampai role admin terakhir diturunkan menjadi operator/viewer.
+    if (existing.role === "admin" && data.role !== "admin") {
+      await pastikanBukanAdminTerakhir(
+        "Tidak dapat mengubah role admin terakhir. Sistem harus memiliki minimal satu admin aktif.",
+      );
+    }
+
+    await jalankanTransaksi(async (koneksi) => {
+      await usersRepository.perbarui(id, { nama: data.nama.trim(), email, role: data.role }, koneksi);
+      await aktivitasRepository.catat(
+        {
+          user_id: penggunaAdminId,
+          aksi: "UPDATE",
+          entitas: "user",
+          entitas_id: id,
+          detail: `Memperbarui data user ${email}.`,
+          ip_address: null,
+        },
+        koneksi,
+      );
+    });
+
+    return this.detail(id);
+  },
+
+  async hapus(id: number, penggunaAdminId: number): Promise<void> {
+    const existing = await usersRepository.cariById(id);
+    if (!existing) {
+      throw new KesalahanAplikasi(404, "Pengguna tidak ditemukan.");
+    }
+
+    if (id === penggunaAdminId) {
+      throw new KesalahanAplikasi(409, "Anda tidak dapat menghapus akun sendiri.");
+    }
+
+    if (existing.role === "admin") {
+      await pastikanBukanAdminTerakhir(
+        "Tidak dapat menghapus admin terakhir. Sistem harus memiliki minimal satu admin aktif.",
+      );
+    }
+
+    await jalankanTransaksi(async (koneksi) => {
+      await usersRepository.hapus(id, koneksi);
+      await aktivitasRepository.catat(
+        {
+          user_id: penggunaAdminId,
+          aksi: "DELETE",
+          entitas: "user",
+          entitas_id: id,
+          detail: `Menghapus user ${existing.email}.`,
+          ip_address: null,
+        },
+        koneksi,
+      );
+    });
+  },
+
+  async resetPassword(
+    id: number,
+    data: DataResetPasswordMasuk,
+    penggunaAdminId: number,
+  ): Promise<void> {
+    const existing = await usersRepository.cariById(id);
+    if (!existing) {
+      throw new KesalahanAplikasi(404, "Pengguna tidak ditemukan.");
+    }
+
+    const passwordHash = await bcrypt.hash(data.passwordBaru, BCRYPT_COST);
+
+    await jalankanTransaksi(async (koneksi) => {
+      await usersRepository.perbaruiPassword(id, passwordHash, koneksi);
+      // Aktivitas dicatat tanpa menyimpan password baru sama sekali, hanya penanda bahwa
+      // reset telah dilakukan dan oleh siapa.
+      await aktivitasRepository.catat(
+        {
+          user_id: penggunaAdminId,
+          aksi: "RESET_PASSWORD",
+          entitas: "user",
+          entitas_id: id,
+          detail: `Reset password untuk user ${existing.email}.`,
+          ip_address: null,
+        },
+        koneksi,
+      );
+    });
+  },
+};

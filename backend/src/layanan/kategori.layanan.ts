@@ -1,77 +1,118 @@
-import KategoriRepositori, { KategoriBarang } from '../repositori/kategori.repositori';
-import { AppError } from '../utilitas/AppError';
-import { skemaKategori } from '../validasi/kategori.validasi';
+import { aktivitasRepository } from "@/repository/aktivitas.repository";
+import { kategoriRepository } from "@/repository/kategori.repository";
+import type { KategoriBarangRow, KategoriDenganJumlahRow } from "@/tipe/basis-data";
+import { KesalahanAplikasi } from "@/tipe/kesalahan-aplikasi";
+import { jalankanTransaksi } from "@/utilitas/transaksi";
 
-class KategoriLayanan {
-  async dapatkanSemuaKategori(): Promise<KategoriBarang[]> {
-    return await KategoriRepositori.getAll();
-  }
-
-  async dapatkanKategoriBerdasarkanId(id: number): Promise<KategoriBarang> {
-    const kategori = await KategoriRepositori.getById(id);
-    if (!kategori) {
-      throw new AppError('Kategori tidak ditemukan', 404);
-    }
-    return kategori;
-  }
-
-  async buatKategori(data: unknown): Promise<KategoriBarang> {
-    // Validasi input Zod
-    const hasilValidasi = skemaKategori.safeParse(data);
-    if (!hasilValidasi.success) {
-      const pesanError = hasilValidasi.error.issues.map(err => err.message).join(', ');
-      throw new AppError(pesanError, 400);
-    }
-
-    const { nama_kategori } = hasilValidasi.data;
-
-    // Cek keunikan (case-insensitive)
-    const kategoriAda = await KategoriRepositori.getByNama(nama_kategori);
-    if (kategoriAda) {
-      throw new AppError('Nama kategori sudah digunakan', 409);
-    }
-
-    const idBaru = await KategoriRepositori.create(nama_kategori);
-    return await this.dapatkanKategoriBerdasarkanId(idBaru);
-  }
-
-  async perbaruiKategori(id: number, data: unknown): Promise<KategoriBarang> {
-    // Pastikan kategori ada
-    await this.dapatkanKategoriBerdasarkanId(id);
-
-    // Validasi input Zod
-    const hasilValidasi = skemaKategori.safeParse(data);
-    if (!hasilValidasi.success) {
-      const pesanError = hasilValidasi.error.issues.map(err => err.message).join(', ');
-      throw new AppError(pesanError, 400);
-    }
-
-    const { nama_kategori } = hasilValidasi.data;
-
-    // Cek keunikan (case-insensitive) dengan mengecualikan ID saat ini
-    const kategoriAda = await KategoriRepositori.getByNama(nama_kategori);
-    if (kategoriAda && kategoriAda.id !== id) {
-      throw new AppError('Nama kategori sudah digunakan oleh kategori lain', 409);
-    }
-
-    await KategoriRepositori.update(id, nama_kategori);
-    return await this.dapatkanKategoriBerdasarkanId(id);
-  }
-
-  async hapusKategori(id: number): Promise<void> {
-    // Pastikan kategori ada
-    await this.dapatkanKategoriBerdasarkanId(id);
-
-    try {
-      await KategoriRepositori.delete(id);
-    } catch (error: any) {
-      // Tangani error foreign key (ER_ROW_IS_REFERENCED_2) MySQL
-      if (error.code === 'ER_ROW_IS_REFERENCED_2') {
-        throw new AppError('Kategori tidak dapat dihapus karena masih memiliki barang terkait.', 409);
-      }
-      throw error; // Lempar ke global handler jika bukan error constraint
-    }
-  }
+export interface DataKategoriMasuk {
+  nama_kategori: string;
+  deskripsi?: string | null;
 }
 
-export default new KategoriLayanan();
+export const kategoriLayanan = {
+  async daftarSemua(): Promise<KategoriDenganJumlahRow[]> {
+    return kategoriRepository.cariSemuaDenganJumlahBarang();
+  },
+
+  async buat(data: DataKategoriMasuk, penggunaId: number): Promise<KategoriBarangRow> {
+    const namaKategori = data.nama_kategori.trim();
+    const deskripsi = data.deskripsi?.trim() || null;
+
+    const sudahAda = await kategoriRepository.cariByNama(namaKategori);
+    if (sudahAda) {
+      throw new KesalahanAplikasi(409, "Nama kategori sudah digunakan.", [
+        { field: "nama_kategori", pesan: "Nama kategori sudah digunakan." },
+      ]);
+    }
+
+    const id = await jalankanTransaksi(async (koneksi) => {
+      const idBaru = await kategoriRepository.buat({ nama_kategori: namaKategori, deskripsi }, koneksi);
+      await aktivitasRepository.catat(
+        {
+          user_id: penggunaId,
+          aksi: "CREATE",
+          entitas: "kategori",
+          entitas_id: idBaru,
+          detail: `Menambahkan kategori "${namaKategori}".`,
+          ip_address: null,
+        },
+        koneksi,
+      );
+      return idBaru;
+    });
+
+    const baris = await kategoriRepository.cariById(id);
+    if (!baris) {
+      throw new KesalahanAplikasi(500, "Gagal membuat kategori. Silakan coba lagi.");
+    }
+    return baris;
+  },
+
+  async perbarui(id: number, data: DataKategoriMasuk, penggunaId: number): Promise<KategoriBarangRow> {
+    const existing = await kategoriRepository.cariById(id);
+    if (!existing) {
+      throw new KesalahanAplikasi(404, "Kategori tidak ditemukan.");
+    }
+
+    const namaKategori = data.nama_kategori.trim();
+    const deskripsi = data.deskripsi?.trim() || null;
+
+    const duplikat = await kategoriRepository.cariByNama(namaKategori);
+    if (duplikat && duplikat.id !== id) {
+      throw new KesalahanAplikasi(409, "Nama kategori sudah digunakan.", [
+        { field: "nama_kategori", pesan: "Nama kategori sudah digunakan." },
+      ]);
+    }
+
+    await jalankanTransaksi(async (koneksi) => {
+      await kategoriRepository.perbarui(id, { nama_kategori: namaKategori, deskripsi }, koneksi);
+      await aktivitasRepository.catat(
+        {
+          user_id: penggunaId,
+          aksi: "UPDATE",
+          entitas: "kategori",
+          entitas_id: id,
+          detail: `Memperbarui kategori "${namaKategori}".`,
+          ip_address: null,
+        },
+        koneksi,
+      );
+    });
+
+    const baris = await kategoriRepository.cariById(id);
+    if (!baris) {
+      throw new KesalahanAplikasi(500, "Gagal memperbarui kategori. Silakan coba lagi.");
+    }
+    return baris;
+  },
+
+  async hapus(id: number, penggunaId: number): Promise<void> {
+    const existing = await kategoriRepository.cariById(id);
+    if (!existing) {
+      throw new KesalahanAplikasi(404, "Kategori tidak ditemukan.");
+    }
+
+    const jumlahBarang = await kategoriRepository.hitungBarangTerpakai(id);
+    if (jumlahBarang > 0) {
+      throw new KesalahanAplikasi(
+        409,
+        `Kategori "${existing.nama_kategori}" masih dipakai oleh ${jumlahBarang} barang dan tidak dapat dihapus.`,
+      );
+    }
+
+    await jalankanTransaksi(async (koneksi) => {
+      await kategoriRepository.hapus(id, koneksi);
+      await aktivitasRepository.catat(
+        {
+          user_id: penggunaId,
+          aksi: "DELETE",
+          entitas: "kategori",
+          entitas_id: id,
+          detail: `Menghapus kategori "${existing.nama_kategori}".`,
+          ip_address: null,
+        },
+        koneksi,
+      );
+    });
+  },
+};

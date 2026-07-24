@@ -1,28 +1,93 @@
-# Sistem Inventaris Laboratorium Komputer
+# LabInventory - Sistem Inventaris Laboratorium Komputer
 
-Sistem web untuk mengelola kategori perangkat, barang inventaris, foto barang, serta user pengelola. 
+Aplikasi web pengelolaan inventaris laboratorium komputer dengan autentikasi JWT dan
+pembatasan akses berdasarkan role **admin**, **operator**, dan **viewer**. Backend dan
+frontend berjalan terpisah, database diakses murni dengan `mysql2/promise` dan SQL manual
+(prepared statement) tanpa ORM.
+
+> Status: fondasi proyek (Tahap 1 dari 10). Fitur autentikasi, CRUD, upload, dan UI penuh
+> akan ditambahkan pada tahap-tahap berikutnya sesuai rencana implementasi pada
+> `Invetaris_prd.pdf`.
+
+## Teknologi
+
+| Bagian   | Teknologi                                                        |
+| -------- | ----------------------------------------------------------------- |
+| Backend  | Express.js + TypeScript (port **3000**)                          |
+| Frontend | Next.js App Router + TypeScript + Tailwind CSS (port **3001**)   |
+| Database | MySQL/MariaDB via XAMPP, database `inventaris_laboratorium`      |
+| Akses DB | `mysql2/promise` dengan SQL manual dan prepared statement (tanpa ORM) |
 
 ## Prasyarat
-- Node.js (v18+)
-- npm
-- MySQL (XAMPP atau server lokal lainnya)
 
-## Database
-1. Buat database `inventaris_laboratorium` di phpMyAdmin (atau biarkan script SQL yang membuatnya).
-2. Impor file `database/inventaris.sql` ke MySQL.
-3. Struktur tabel dan data demo beserta akun akan dibuat secara otomatis.
+- Node.js 20 LTS atau lebih baru (disarankan sesuai versi yang terpasang di mesin developer, `node -v`).
+- npm (satu paket dengan Node.js).
+- XAMPP dengan Apache dan MySQL aktif (dipakai untuk MySQL/phpMyAdmin, bukan untuk hosting backend/frontend).
+- Port `3000` (backend) dan `3001` (frontend) belum dipakai proses lain.
 
-## Menjalankan Proyek (Tahap 1)
+## Struktur Folder
 
-### Backend
-1. Masuk ke folder backend: `cd backend`
-2. Salin file environment: `cp .env.example .env` (kemudian sesuaikan konfigurasi database jika diperlukan).
-3. Instal dependensi: `npm install`
-4. Jalankan server: `npm run dev`
-5. Backend akan berjalan di `http://localhost:3000`. Cek endpoint dengan mengakses `http://localhost:3000/api/kesehatan`.
+```
+labinventory/
+├── backend/          # REST API Express + TypeScript
+├── frontend/          # Aplikasi Next.js App Router + TypeScript
+├── database/          # inventaris.sql (skema dan seed untuk XAMPP)
+├── dokumentasi/        # API.md dan DEMO.md (disusun pada tahap akhir)
+└── README.md
+```
 
-### Frontend
-1. Masuk ke folder frontend: `cd frontend`
-2. Instal dependensi: `npm install`
-3. Jalankan aplikasi: `npm run dev -- -p 3001`
-4. Frontend akan berjalan di `http://localhost:3001`.
+## Urutan Instalasi
+
+1. Aktifkan Apache dan MySQL pada XAMPP.
+2. Buka phpMyAdmin dan impor `database/inventaris.sql` (tersedia mulai Tahap 2).
+3. Salin `backend/.env.example` menjadi `backend/.env`, lalu sesuaikan nilainya
+   (khususnya `JWT_SECRET` minimal 32 karakter dan kredensial MySQL lokal).
+4. Masuk ke folder `backend`, jalankan `npm install` lalu `npm run dev`.
+5. Salin `frontend/.env.local.example` menjadi `frontend/.env.local`.
+6. Masuk ke folder `frontend`, jalankan `npm install` lalu `npm run dev`.
+7. Buka `http://localhost:3001` di browser. Akun demo akan tersedia setelah database
+   seed (Tahap 2) diimpor.
+
+## Menjalankan Proyek
+
+### Backend (port 3000)
+
+```bash
+cd backend
+npm install
+npm run dev      # mode development (tsx watch)
+npm run build     # kompilasi TypeScript ke dist/
+npm run start     # menjalankan hasil build
+npm run lint      # ESLint
+npm test          # Jest
+```
+
+Endpoint pemeriksaan kesehatan: `GET http://localhost:3000/api/health`
+
+### Frontend (port 3001)
+
+```bash
+cd frontend
+npm install
+npm run dev      # mode development
+npm run build     # build produksi
+npm run start     # menjalankan hasil build
+npm run lint      # ESLint
+```
+
+## Environment
+
+Lihat `backend/.env.example` dan `frontend/.env.local.example` untuk daftar lengkap
+variabel yang dibutuhkan. Jangan pernah melakukan commit file `.env`/`.env.local` yang
+berisi nilai asli.
+
+## Akun Demo
+
+Akun demo (admin, operator, viewer) beserta password awal akan tersedia setelah
+`database/inventaris.sql` diimpor pada Tahap 2. Detail lengkap didokumentasikan pada
+`Invetaris_prd.pdf` bagian 6.4 dan akan disalin ke sini pada tahap finalisasi.
+
+## Dokumentasi Lanjutan
+
+Dokumentasi kontrak API (`dokumentasi/API.md`) dan urutan demo ujian
+(`dokumentasi/DEMO.md`) disusun pada Tahap 10 (QA final) setelah seluruh fitur selesai.

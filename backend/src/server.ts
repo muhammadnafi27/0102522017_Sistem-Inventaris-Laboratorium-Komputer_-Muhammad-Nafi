@@ -1,49 +1,49 @@
-import app from './aplikasi';
-import pool from './konfigurasi/database';
-import { Server } from 'http';
+import type { Server } from "node:http";
 
-const port = Number(process.env.PORT) || 3000;
+import { buatAplikasi } from "@/aplikasi";
+import { environment } from "@/konfigurasi/environment";
+import { tutupPoolDatabase, ujiKoneksiDatabase } from "@/konfigurasi/database";
+import { logger } from "@/utilitas/logger";
+import { pastikanFolderUnggahanAda } from "@/utilitas/berkas";
 
-/**
- * Menutup server dan pool database dengan bersih saat proses dihentikan.
- * Mencegah koneksi database menggantung (connection leak).
- */
-const matikanServer = (server: Server): void => {
-  server.close(async () => {
-    console.log('[server] Menutup koneksi database...');
-    try {
-      await pool.end();
-      console.log('[server] Pool database berhasil ditutup. Sampai jumpa.');
-    } catch (err) {
-      console.error('[server] Gagal menutup pool database:', err);
-    }
-    process.exit(0);
+// Titik masuk utama proses backend. Server HTTP baru dibuka setelah koneksi database
+// terverifikasi dan folder upload foto dipastikan tersedia, supaya kesalahan konfigurasi
+// langsung terlihat saat start alih-alih muncul samar ketika request pertama masuk.
+async function mulaiServer(): Promise<void> {
+  await ujiKoneksiDatabase();
+  await pastikanFolderUnggahanAda();
+
+  const aplikasi = buatAplikasi();
+
+  const server = aplikasi.listen(environment.port, () => {
+    logger.info(
+      `Server LabInventory backend berjalan pada http://localhost:${environment.port} (mode ${environment.nodeEnv})`,
+    );
   });
-};
 
-const startServer = async (): Promise<void> => {
-  // Verifikasi koneksi database saat startup
-  try {
-    const koneksi = await pool.getConnection();
-    koneksi.release(); // Kembalikan koneksi ke pool segera setelah diverifikasi
-    console.log('[server] Koneksi database MySQL berhasil.');
-  } catch (error) {
-    console.warn('[server] Peringatan: Gagal terhubung ke database. Server tetap berjalan:', error);
+  daftarkanGracefulShutdown(server);
+}
+
+// Graceful shutdown: menutup server HTTP terlebih dahulu agar request yang sedang berjalan
+// selesai, baru menutup pool database, sebelum proses benar-benar berhenti.
+function daftarkanGracefulShutdown(server: Server): void {
+  function matikanServer(sinyal: string): void {
+    logger.info(`Menerima sinyal ${sinyal}, mematikan server...`);
+    server.close(() => {
+      tutupPoolDatabase()
+        .catch((error) => logger.error("Gagal menutup pool database dengan rapi", error))
+        .finally(() => {
+          logger.info("Server telah dimatikan dengan aman.");
+          process.exit(0);
+        });
+    });
   }
 
-  const server = app.listen(port, () => {
-    console.log(`[server] Backend berjalan di http://localhost:${port} (mode: ${process.env.NODE_ENV ?? 'development'})`);
-  });
+  process.on("SIGINT", () => matikanServer("SIGINT"));
+  process.on("SIGTERM", () => matikanServer("SIGTERM"));
+}
 
-  // Graceful shutdown: tangkap sinyal terminasi dari OS/Docker/PM2
-  process.on('SIGTERM', () => {
-    console.log('[server] Menerima SIGTERM, memulai graceful shutdown...');
-    matikanServer(server);
-  });
-  process.on('SIGINT', () => {
-    console.log('[server] Menerima SIGINT (Ctrl+C), memulai graceful shutdown...');
-    matikanServer(server);
-  });
-};
-
-startServer();
+mulaiServer().catch((error) => {
+  logger.error("Server gagal dijalankan", error);
+  process.exit(1);
+});

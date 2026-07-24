@@ -1,79 +1,64 @@
-import express, { Request, Response, NextFunction } from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import cookieParser from 'cookie-parser';
-import ruteKesehatan from './rute/kesehatan.rute';
-import ruteAutentikasi from './rute/autentikasi.rute';
-import ruteKategori from './rute/kategori.rute';
-import ruteBarang from './rute/barang.rute';
-import ruteUser from './rute/user.rute';
-import { AppError } from './utilitas/AppError';
+import cookieParser from "cookie-parser";
+import cors from "cors";
+import express, { type Application } from "express";
+import helmet from "helmet";
+import morgan from "morgan";
 
-// Inisialisasi Express app
-const app = express();
+import { environment } from "@/konfigurasi/environment";
+import { penanganErrorPusat, penanganRuteTidakDitemukan } from "@/middleware/penangan-error";
+import ruteAktivitas from "@/rute/aktivitas.rute";
+import ruteAuth from "@/rute/auth.rute";
+import ruteBarang from "@/rute/barang.rute";
+import ruteDashboard from "@/rute/dashboard.rute";
+import ruteKategori from "@/rute/kategori.rute";
+import ruteKesehatan from "@/rute/kesehatan.rute";
+import ruteProfil from "@/rute/profil.rute";
+import ruteUser from "@/rute/user.rute";
 
-// Konfigurasi middleware dasar
-app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URL ?? 'http://localhost:3001',
-  credentials: true,
-}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
+// Membuat dan mengonfigurasi instance Express. Dipisah dari server.ts agar aplikasi
+// dapat diimpor langsung oleh test integrasi tanpa perlu membuka port sungguhan.
+export function buatAplikasi(): Application {
+  const aplikasi = express();
 
-// Menyajikan file statis dari folder unggahan
-app.use('/unggahan', express.static('unggahan'));
+  // Helmet menambahkan header keamanan HTTP standar (mis. X-Content-Type-Options, HSTS).
+  aplikasi.use(helmet());
 
-// Rute API
-app.use('/api/auth', ruteAutentikasi);
-app.use('/api/users', ruteUser);
-app.use('/api/kategori', ruteKategori);
-app.use('/api/barang', ruteBarang);
-app.use('/api', ruteKesehatan);
+  // CORS hanya mengizinkan origin frontend yang eksplisit dan mengizinkan cookie (credentials).
+  aplikasi.use(
+    cors({
+      origin: environment.frontendUrl,
+      credentials: true,
+    }),
+  );
 
-// Endpoint uji middleware role — HANYA aktif di mode development
-if (process.env.NODE_ENV === 'development') {
-  // Impor dinamis agar tidak ikut bundle production
-  Promise.all([
-    import('./middleware/autentikasi.middleware'),
-    import('./middleware/role.middleware'),
-  ]).then(([{ autentikasi }, { izinkanRole }]) => {
-    app.get('/api/tes-admin', autentikasi, izinkanRole('admin'), (_req: Request, res: Response) => {
-      res.json({ sukses: true, pesan: 'Berhasil masuk ke rute admin' });
-    });
-    app.get('/api/tes-operator', autentikasi, izinkanRole('admin', 'operator'), (_req: Request, res: Response) => {
-      res.json({ sukses: true, pesan: 'Berhasil masuk ke rute operator/admin' });
-    });
-  });
+  // Morgan mencatat setiap request masuk; format "dev" ringkas dan cukup untuk kebutuhan demo.
+  aplikasi.use(morgan(environment.isProduction ? "combined" : "dev"));
+
+  // Parser body JSON dan urlencoded dengan batas ukuran agar terlindung dari payload berlebihan.
+  aplikasi.use(express.json({ limit: "1mb" }));
+  aplikasi.use(express.urlencoded({ extended: true, limit: "1mb" }));
+
+  // Cookie parser dibutuhkan karena JWT disimpan pada cookie HttpOnly, bukan header Authorization.
+  aplikasi.use(cookieParser());
+
+  // Menyajikan file upload statis (foto barang) melalui path /uploads.
+  aplikasi.use("/uploads", express.static("unggahan"));
+
+  // Seluruh endpoint REST API diprefix dengan /api sesuai kontrak PRD.
+  aplikasi.use("/api", ruteKesehatan);
+  aplikasi.use("/api/auth", ruteAuth);
+  aplikasi.use("/api/kategori", ruteKategori);
+  aplikasi.use("/api/barang", ruteBarang);
+  aplikasi.use("/api/dashboard", ruteDashboard);
+  aplikasi.use("/api/users", ruteUser);
+  aplikasi.use("/api/profil", ruteProfil);
+  aplikasi.use("/api/aktivitas", ruteAktivitas);
+
+  // Middleware 404 harus didaftarkan setelah semua rute agar hanya menangkap path yang tidak cocok.
+  aplikasi.use(penanganRuteTidakDitemukan);
+
+  // Error handler pusat wajib menjadi middleware paling akhir.
+  aplikasi.use(penanganErrorPusat);
+
+  return aplikasi;
 }
-
-// Handler 404 — route tidak ditemukan
-app.use((_req: Request, res: Response) => {
-  res.status(404).json({
-    sukses: false,
-    pesan: 'Route tidak ditemukan',
-  });
-});
-
-// Handler error global — menerima AppError dan error generik
-app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  // Log error untuk keperluan debugging di server
-  console.error('[ERROR]', err);
-
-  if (err instanceof AppError) {
-    res.status(err.statusCode).json({
-      sukses: false,
-      pesan: err.message,
-    });
-    return;
-  }
-
-  // Error tak terduga — jangan bocorkan detail ke client
-  res.status(500).json({
-    sukses: false,
-    pesan: 'Terjadi kesalahan internal pada server',
-  });
-});
-
-export default app;

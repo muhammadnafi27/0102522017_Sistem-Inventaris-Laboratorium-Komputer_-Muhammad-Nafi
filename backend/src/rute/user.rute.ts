@@ -1,26 +1,38 @@
-import { Router } from 'express';
+import { Router } from "express";
+
+import { userController } from "@/controller/user.controller";
+import { autentikasi } from "@/middleware/autentikasi";
+import { authorizeRoles } from "@/middleware/otorisasi";
+import { tanganiHasilValidasi } from "@/middleware/validasi-hasil";
+import { validasiParamId } from "@/validasi/bersama.validasi";
 import {
-  dapatkanSemua,
-  dapatkanSatu,
-  tambahUser,
-  perbaruiUser,
-  hapusUser,
-  resetPassword,
-} from '../kontroler/user.kontroler';
-import { autentikasi } from '../middleware/autentikasi.middleware';
-import { izinkanRole } from '../middleware/role.middleware';
+  validasiBuatUser,
+  validasiPerbaruiUser,
+  validasiQueryDaftarUser,
+  validasiResetPassword,
+} from "@/validasi/user.validasi";
 
-const router = Router();
+const rute = Router();
 
-// HAK AKSES MUTLAK: Seluruh /api/users wajib autentikasi dan role ADMIN
-router.use(autentikasi);
-router.use(izinkanRole('admin'));
+// Seluruh endpoint manajemen user khusus admin.
+rute.use(autentikasi, authorizeRoles("admin"));
 
-router.get('/', dapatkanSemua);
-router.get('/:id', dapatkanSatu);
-router.post('/', tambahUser);
-router.put('/:id', perbaruiUser);
-router.delete('/:id', hapusUser);
-router.post('/:id/reset-password', resetPassword);
+rute.get("/", validasiQueryDaftarUser, tanganiHasilValidasi, userController.daftar);
 
-export default router;
+rute.get("/:id", validasiParamId, tanganiHasilValidasi, userController.detail);
+
+rute.post("/", validasiBuatUser, tanganiHasilValidasi, userController.buat);
+
+rute.put("/:id", validasiParamId, validasiPerbaruiUser, tanganiHasilValidasi, userController.perbarui);
+
+rute.delete("/:id", validasiParamId, tanganiHasilValidasi, userController.hapus);
+
+rute.patch(
+  "/:id/reset-password",
+  validasiParamId,
+  validasiResetPassword,
+  tanganiHasilValidasi,
+  userController.resetPassword,
+);
+
+export default rute;

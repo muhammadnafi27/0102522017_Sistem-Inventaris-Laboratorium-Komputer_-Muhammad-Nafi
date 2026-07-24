@@ -1,25 +1,16 @@
-import { Router, Request, Response } from 'express';
-import pool from '../konfigurasi/database';
+import { Router } from "express";
 
-// Membuat router khusus untuk endpoint kesehatan
-const ruteKesehatan = Router();
+import { responsSukses } from "@/utilitas/respons";
 
-// GET /api/kesehatan - Memeriksa status server dan database
-ruteKesehatan.get('/kesehatan', async (_req: Request, res: Response) => {
-  try {
-    // Mencoba melakukan query sederhana ke database
-    await pool.query('SELECT 1');
-    
-    res.status(200).json({
-      sukses: true,
-      pesan: "Server dan koneksi database berjalan dengan baik"
-    });
-  } catch (error) {
-    res.status(500).json({
-      sukses: false,
-      pesan: "Server berjalan, tetapi koneksi database gagal"
-    });
-  }
+const rute = Router();
+
+// Endpoint sederhana untuk memastikan server backend hidup dan menerima request.
+// Dipakai pada tahap fondasi sebelum fitur domain lain dibangun.
+rute.get("/health", (req, res) => {
+  responsSukses(res, 200, "Server LabInventory berjalan normal.", {
+    status: "ok",
+    waktu: new Date().toISOString(),
+  });
 });
 
-export default ruteKesehatan;
+export default rute;

@@ -1,28 +1,43 @@
-import { Router } from 'express';
-import {
-  dapatkanSemua,
-  dapatkanSatu,
-  tambahKategori,
-  perbaruiKategori,
-  hapusKategori
-} from '../kontroler/kategori.kontroler';
-import { autentikasi } from '../middleware/autentikasi.middleware';
-import { izinkanRole } from '../middleware/role.middleware';
+import { Router } from "express";
 
-const router = Router();
+import { kategoriController } from "@/controller/kategori.controller";
+import { autentikasi } from "@/middleware/autentikasi";
+import { authorizeRoles } from "@/middleware/otorisasi";
+import { tanganiHasilValidasi } from "@/middleware/validasi-hasil";
+import { validasiParamId } from "@/validasi/bersama.validasi";
+import { validasiKategori } from "@/validasi/kategori.validasi";
 
-// Semua rute kategori membutuhkan login (autentikasi)
-router.use(autentikasi);
+const rute = Router();
 
-// Viewer, Operator, Admin: Bisa baca
-router.get('/', dapatkanSemua);
-router.get('/:id', dapatkanSatu);
+// Seluruh endpoint kategori membutuhkan login; menu kategori sendiri hanya untuk admin/operator.
+rute.use(autentikasi);
 
-// Operator, Admin: Bisa tambah & edit
-router.post('/', izinkanRole('admin', 'operator'), tambahKategori);
-router.put('/:id', izinkanRole('admin', 'operator'), perbaruiKategori);
+rute.get("/", authorizeRoles("admin", "operator"), kategoriController.daftar);
 
-// Hanya Admin: Bisa hapus
-router.delete('/:id', izinkanRole('admin'), hapusKategori);
+rute.post(
+  "/",
+  authorizeRoles("admin", "operator"),
+  validasiKategori,
+  tanganiHasilValidasi,
+  kategoriController.buat,
+);
 
-export default router;
+rute.put(
+  "/:id",
+  authorizeRoles("admin", "operator"),
+  validasiParamId,
+  validasiKategori,
+  tanganiHasilValidasi,
+  kategoriController.perbarui,
+);
+
+// Hapus kategori hanya admin - operator boleh create/update tetapi tidak boleh delete.
+rute.delete(
+  "/:id",
+  authorizeRoles("admin"),
+  validasiParamId,
+  tanganiHasilValidasi,
+  kategoriController.hapus,
+);
+
+export default rute;

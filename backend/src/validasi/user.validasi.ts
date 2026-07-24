@@ -1,53 +1,59 @@
-import { z } from 'zod';
+import { body, query } from "express-validator";
 
-export const skemaBuatUser = z.object({
-  nama: z
-    .string({ message: 'Nama wajib diisi dan harus berupa teks' })
+// Daftar role valid sesuai ENUM kolom role pada tabel users.
+export const ROLE_VALID = ["admin", "operator", "viewer"] as const;
+
+// Password minimal 8 karakter dan mengandung huruf serta angka - dipakai bersama oleh
+// pembuatan user dan reset password (aturan bisnis PRD 3.2).
+function validatorPassword(field: string) {
+  return body(field)
+    .isLength({ min: 8 })
+    .withMessage(`${field} minimal 8 karakter.`)
+    .bail()
+    .matches(/[A-Za-z]/)
+    .withMessage(`${field} harus mengandung huruf.`)
+    .matches(/[0-9]/)
+    .withMessage(`${field} harus mengandung angka.`);
+}
+
+// Validasi POST /api/users (admin membuat user baru, password ditentukan langsung).
+export const validasiBuatUser = [
+  body("nama").trim().isLength({ min: 3, max: 120 }).withMessage("Nama wajib diisi, 3-120 karakter."),
+  body("email")
     .trim()
-    .min(2, { message: 'Nama minimal 2 karakter' })
-    .max(100, { message: 'Nama maksimal 100 karakter' }),
-  email: z
-    .string({ message: 'Email wajib diisi' })
+    .customSanitizer((nilai: string) => nilai.toLowerCase())
+    .isEmail()
+    .withMessage("Email tidak valid."),
+  validatorPassword("password"),
+  body("role").isIn(ROLE_VALID).withMessage("Role harus admin, operator, atau viewer."),
+];
+
+// Validasi PUT /api/users/:id (admin mengubah nama/email/role - tanpa password).
+export const validasiPerbaruiUser = [
+  body("nama").trim().isLength({ min: 3, max: 120 }).withMessage("Nama wajib diisi, 3-120 karakter."),
+  body("email")
     .trim()
-    .toLowerCase()
-    .email({ message: 'Format email tidak valid' })
-    .max(150, { message: 'Email maksimal 150 karakter' }),
-  password: z
-    .string({ message: 'Password wajib diisi' })
-    .min(8, { message: 'Password minimal 8 karakter' }),
-  role: z.enum(['admin', 'operator', 'viewer'] as const, {
-    message: 'Role harus berupa admin, operator, atau viewer',
+    .customSanitizer((nilai: string) => nilai.toLowerCase())
+    .isEmail()
+    .withMessage("Email tidak valid."),
+  body("role").isIn(ROLE_VALID).withMessage("Role harus admin, operator, atau viewer."),
+];
+
+// Validasi PATCH /api/users/:id/reset-password.
+export const validasiResetPassword = [
+  validatorPassword("passwordBaru"),
+  body("konfirmasiPassword").custom((nilai: string, { req }) => {
+    if (nilai !== req.body.passwordBaru) {
+      throw new Error("Konfirmasi password tidak cocok.");
+    }
+    return true;
   }),
-});
+];
 
-export const skemaEditUser = z.object({
-  nama: z
-    .string({ message: 'Nama wajib diisi dan harus berupa teks' })
-    .trim()
-    .min(2, { message: 'Nama minimal 2 karakter' })
-    .max(100, { message: 'Nama maksimal 100 karakter' }),
-  email: z
-    .string({ message: 'Email wajib diisi' })
-    .trim()
-    .toLowerCase()
-    .email({ message: 'Format email tidak valid' })
-    .max(150, { message: 'Email maksimal 150 karakter' }),
-  role: z.enum(['admin', 'operator', 'viewer'] as const, {
-    message: 'Role harus berupa admin, operator, atau viewer',
-  }),
-});
-
-export const skemaResetPassword = z.object({
-  password_baru: z
-    .string({ message: 'Password baru wajib diisi' })
-    .min(8, { message: 'Password baru minimal 8 karakter' }),
-  konfirmasi_password: z
-    .string({ message: 'Konfirmasi password wajib diisi' }),
-}).refine((data) => data.password_baru === data.konfirmasi_password, {
-  message: 'Konfirmasi password tidak cocok dengan password baru',
-  path: ['konfirmasi_password'],
-});
-
-export type TipeBuatUser = z.infer<typeof skemaBuatUser>;
-export type TipeEditUser = z.infer<typeof skemaEditUser>;
-export type TipeResetPassword = z.infer<typeof skemaResetPassword>;
+// Validasi query string GET /api/users?page=&limit=&search=&role=.
+export const validasiQueryDaftarUser = [
+  query("page").optional().isInt({ min: 1 }).withMessage("page harus bilangan bulat positif.").toInt(),
+  query("limit").optional().isInt({ min: 1, max: 100 }).withMessage("limit harus 1-100.").toInt(),
+  query("search").optional({ values: "falsy" }).trim().isLength({ max: 160 }),
+  query("role").optional({ values: "falsy" }).isIn(ROLE_VALID),
+];
