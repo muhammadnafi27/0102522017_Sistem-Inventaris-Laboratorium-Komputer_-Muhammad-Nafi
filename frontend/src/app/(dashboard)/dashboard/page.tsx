@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 
-import { HalamanSegera } from "@/komponen/halaman-segera";
+import { IsiDashboard } from "@/fitur/dashboard/isi-dashboard";
 
 export const metadata: Metadata = { title: "Dashboard - LabInventory" };
 
 export default function HalamanDashboard() {
-  return <HalamanSegera judul="Dashboard" />;
+  return <IsiDashboard />;
 }

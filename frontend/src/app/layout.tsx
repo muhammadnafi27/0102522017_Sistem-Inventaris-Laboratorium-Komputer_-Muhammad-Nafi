@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 
 import { AuthProvider } from "@/konteks/auth-konteks";
+import { ToastProvider } from "@/konteks/toast-konteks";
 
 // Font Inter dipakai konsisten di seluruh aplikasi sesuai spesifikasi UI/UX pada PRD.
 const inter = Inter({
@@ -24,7 +25,9 @@ export default function RootLayout({
   return (
     <html lang="id" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </AuthProvider>
       </body>
     </html>
   );

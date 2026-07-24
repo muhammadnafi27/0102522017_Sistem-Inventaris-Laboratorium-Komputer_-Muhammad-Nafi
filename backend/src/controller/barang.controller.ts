@@ -28,6 +28,11 @@ export const barangController = {
     responsSukses(res, 200, "Detail barang berhasil diambil.", barang);
   },
 
+  async daftarLokasi(_req: Request, res: Response): Promise<void> {
+    const lokasi = await barangLayanan.daftarLokasi();
+    responsSukses(res, 200, "Daftar lokasi berhasil diambil.", lokasi);
+  },
+
   async buat(req: Request, res: Response): Promise<void> {
     const pengguna = penggunaWajib(req);
     try {

@@ -93,6 +93,10 @@ export const barangLayanan = {
     return baris;
   },
 
+  async daftarLokasi(): Promise<string[]> {
+    return barangRepository.cariDistinctLokasi();
+  },
+
   async buat(data: DataBarangMasuk, penggunaId: number): Promise<BarangDenganKategoriRow> {
     const kodeBarang = data.kode_barang.trim().toUpperCase();
 

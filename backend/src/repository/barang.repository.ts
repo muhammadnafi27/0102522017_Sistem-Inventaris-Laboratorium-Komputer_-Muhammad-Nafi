@@ -122,6 +122,16 @@ export const barangRepository = {
     return Number(baris[0]?.total ?? 0);
   },
 
+  // Daftar lokasi unik yang sedang dipakai barang, untuk mengisi opsi dropdown filter lokasi
+  // pada halaman inventaris frontend (backend adalah satu-satunya sumber kebenaran lokasi).
+  async cariDistinctLokasi(konektor: Konektor = pool): Promise<string[]> {
+    const [baris] = await konektor.execute<HitungRow[]>(
+      "SELECT DISTINCT lokasi FROM barang ORDER BY lokasi ASC",
+    );
+    // Baris hasil query hanya punya kolom "lokasi"; dipetakan ke array string sederhana.
+    return (baris as unknown as { lokasi: string }[]).map((b) => b.lokasi);
+  },
+
   // Jumlah barang per kondisi (Baik/Perlu Perawatan/Rusak/Tidak Aktif) untuk kartu
   // statistik dan grafik "Kondisi Barang" pada dashboard.
   async hitungPerKondisi(konektor: Konektor = pool): Promise<DistribusiKondisiRow[]> {

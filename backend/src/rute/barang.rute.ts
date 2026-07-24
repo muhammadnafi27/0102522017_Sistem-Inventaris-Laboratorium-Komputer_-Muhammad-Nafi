@@ -15,6 +15,10 @@ rute.use(autentikasi);
 
 rute.get("/", validasiQueryDaftarBarang, tanganiHasilValidasi, barangController.daftar);
 
+// Wajib didaftarkan SEBELUM "/:id" agar path statis ini tidak tertangkap sebagai parameter id
+// (validasiParamId hanya menerima angka, sehingga "opsi-lokasi" akan ditolak 422 bila salah urutan).
+rute.get("/opsi-lokasi", barangController.daftarLokasi);
+
 rute.get("/:id", validasiParamId, tanganiHasilValidasi, barangController.detail);
 
 // unggahFotoBarang (Multer) wajib berjalan sebelum validator body karena field non-file
