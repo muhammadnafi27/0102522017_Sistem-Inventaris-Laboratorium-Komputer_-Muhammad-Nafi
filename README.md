@@ -459,10 +459,84 @@ Cakupan pengujian backend meliputi: login ketiga role, token rusak/kedaluwarsa, 
 
 ---
 
+## Tampilan Aplikasi (Screenshot)
+
+Screenshot lengkap aplikasi tersimpan di folder [`dokumentasi/screenshot/`](dokumentasi/screenshot/). Berikut sejumlah tampilan utama:
+
+### Autentikasi
+
+| Login (Admin) | Login (Staff/Operator) | Login (Viewer) |
+| :---: | :---: | :---: |
+| ![Admin Login](dokumentasi/screenshot/admin%20login.png) | ![Staff Login](dokumentasi/screenshot/Staff%20Login.png) | ![Viewer Login](dokumentasi/screenshot/Viewer%20Login.png) |
+
+| Halaman Login | Halaman Register |
+| :---: | :---: |
+| ![Login Page](dokumentasi/screenshot/Login%20page.png) | ![Register](dokumentasi/screenshot/Register.png) |
+
+### Dashboard
+
+| Dashboard Admin | Dashboard Staff | Dashboard Viewer |
+| :---: | :---: | :---: |
+| ![Dashboard Admin](dokumentasi/screenshot/dashboard%20admin.png) | ![Staff Dashboard](dokumentasi/screenshot/Staff%20Dashboard.png) | ![Viewer Dashboard](dokumentasi/screenshot/Viewer%20Dashboard.png) |
+
+### Inventaris Barang
+
+| Daftar Barang | Form Tambah Barang | Form Diisi |
+| :---: | :---: | :---: |
+| ![Inventaris Barang](dokumentasi/screenshot/Inventaris%20barang.png) | ![Form Barang](dokumentasi/screenshot/Form%20Barang.png) | ![Form Barang Diisi](dokumentasi/screenshot/Form%20Barang%20Diisi.png) |
+
+| Barang Berhasil Ditambah | Edit Form | Edit Berhasil |
+| :---: | :---: | :---: |
+| ![Barang Berhasil Ditambah](dokumentasi/screenshot/Barang%20Berhasil%20Ditambah.png) | ![Edit Form](dokumentasi/screenshot/Edit%20Form.png) | ![Edit Berhasil](dokumentasi/screenshot/Edit%20Berhasil.png) |
+
+| Konfirmasi Hapus Barang | Hapus Barang Berhasil |
+| :---: | :---: |
+| ![Hapus Barang](dokumentasi/screenshot/Hapus%20Barang.png) | ![Hapus Barang Berhasil](dokumentasi/screenshot/Hapus%20Barang%20Berhasil.png) |
+
+### Kategori Barang
+
+| Daftar Kategori | Form Kategori | Kategori Berhasil Ditambah |
+| :---: | :---: | :---: |
+| ![Kategori Barang](dokumentasi/screenshot/kategori%20barang.png) | ![Kategori Form](dokumentasi/screenshot/Kategori%20Form.png) | ![Kategori Berhasil Ditambah](dokumentasi/screenshot/Kategori%20Berhasil%20Ditambah.png) |
+
+| Konfirmasi Hapus Kategori | Hapus Kategori Berhasil |
+| :---: | :---: |
+| ![Kategori Hapus](dokumentasi/screenshot/Kategori%20Hapus.png) | ![Hapus Kategori Berhasil](dokumentasi/screenshot/Hapus%20Kategori%20Berhasil.png) |
+
+### Manajemen User dan Profil
+
+| Manajemen User | Form Reset Password | Ubah Profil |
+| :---: | :---: | :---: |
+| ![User Manajemen](dokumentasi/screenshot/User%20manajemen.png) | ![Form Reset Password](dokumentasi/screenshot/Form%20Reset%20Password.png) | ![Ubah Profil](dokumentasi/screenshot/Ubah%20Profil.png) |
+
+### Tampilan per Role (Operator)
+
+| Inventaris (Staff) | Kategori (Staff) |
+| :---: | :---: |
+| ![Staff Inventaris](dokumentasi/screenshot/Staff%20Inventaris.png) | ![Staff Kategori](dokumentasi/screenshot/Staff%20Kategori.png) |
+
+### Tampilan per Role (Viewer)
+
+| Inventaris (Viewer) |
+| :---: |
+| ![Viewer Inventaris](dokumentasi/screenshot/Viewer%20Inventaris.png) |
+
+### Aktivitas Sistem
+
+| Log Aktivitas |
+| :---: |
+| ![Aktivitas Sistem](dokumentasi/screenshot/Aktivitas%20sistem.png) |
+
+---
+
 ## Dokumentasi Lain
 
-| Berkas | Isi |
+Seluruh berkas dokumentasi tersimpan di folder [`dokumentasi/`](dokumentasi/). Folder ini berisi tiga berkas referensi teknis dan satu subfolder screenshot tampilan aplikasi.
+
+| Berkas / Folder | Isi |
 | :--- | :--- |
-| [dokumentasi/API.md](dokumentasi/API.md) | Tabel lengkap endpoint: metode, role, request, response, dan status error |
-| [dokumentasi/DEMO.md](dokumentasi/DEMO.md) | Urutan demonstrasi 8–12 menit beserta perkiraan waktu tiap bagian |
-| [dokumentasi/KONSEP-TEKNIS.md](dokumentasi/KONSEP-TEKNIS.md) | Penjelasan prepared statement, JWT, bcrypt, CORS + cookie, middleware role, siklus hidup upload, pagination SQL, dan tanya jawab teknis |
+| [dokumentasi/API.md](dokumentasi/API.md) | Kontrak lengkap seluruh endpoint REST API: Base URL, format respons standar (sukses dan gagal), daftar kode status HTTP yang dipakai, serta tabel metode, path, role yang diizinkan, bentuk request body/query, dan contoh respons untuk setiap endpoint (Auth, Dashboard, Barang, Kategori, User, Profil, Aktivitas). |
+| [dokumentasi/DEMO.md](dokumentasi/DEMO.md) | Panduan urutan demonstrasi proyek di depan penguji dengan estimasi total waktu 8 hingga 12 menit. Mencakup langkah persiapan sebelum demo (impor ulang basis data, menjalankan backend dan frontend, menyiapkan tab browser), skenario alur demo per bagian (login, CRUD barang, upload foto, kategori, manajemen user, reset password, log aktivitas), serta catatan penting terkait rate limit dan pengujian. |
+| [dokumentasi/KONSEP-TEKNIS.md](dokumentasi/KONSEP-TEKNIS.md) | Penjelasan mendalam mekanisme teknis inti sistem beserta kutipan kode yang sesungguhnya dipakai. Mencakup: prepared statement dan alasan tidak memakai ORM, cara kerja JWT di cookie HttpOnly, proses hash bcrypt, konfigurasi CORS dan cookie lintas origin, cara middleware autentikasi dan otorisasi bekerja, siklus hidup berkas foto (upload, penggantian, dan penghapusan otomatis), pagination dengan SQL LIMIT/OFFSET, serta daftar pertanyaan teknis yang mungkin diajukan penguji beserta jawaban lengkapnya. |
+| [dokumentasi/screenshot/](dokumentasi/screenshot/) | Koleksi 28 screenshot tampilan antarmuka aplikasi yang mencakup seluruh fitur: autentikasi (login, register), dashboard per role, CRUD barang dan kategori, manajemen user, reset password, profil, dan log aktivitas sistem. |
+
