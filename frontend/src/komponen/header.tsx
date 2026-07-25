@@ -49,11 +49,14 @@ export function Header({ onBukaDrawerMobile }: PropsHeader) {
           </div>
         )}
 
+        {/* aria-label tetap ditulis meski ada teks "Keluar", karena teks itu disembunyikan
+            di bawah lebar sm sehingga tombolnya akan kehilangan nama aksesibel di layar kecil. */}
         <button
           type="button"
           onClick={tanganiLogout}
           disabled={sedangKeluar}
-          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-delete transition-colors hover:bg-red-50 disabled:opacity-60"
+          aria-label="Keluar"
+          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-delete transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-delete/40 disabled:opacity-60"
         >
           <IkonKeluar className="h-5 w-5" />
           <span className="hidden sm:inline">Keluar</span>

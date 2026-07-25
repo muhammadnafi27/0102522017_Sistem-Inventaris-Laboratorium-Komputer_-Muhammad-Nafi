@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
+import { IkonPeringatan } from "@/komponen/ikon";
 import { InputPassword } from "@/komponen/input-password";
-import { KELAS_INPUT_TEKS, KolomForm } from "@/komponen/kolom-form";
+import { KELAS_INPUT_TEKS, KELAS_TOMBOL_UTAMA, KolomForm } from "@/komponen/kolom-form";
 import { SkeletonHalaman } from "@/komponen/skeleton-halaman";
 import { useAuth } from "@/konteks/auth-konteks";
 import { login } from "@/layanan-api/auth";
@@ -22,6 +23,9 @@ export function FormLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [ingatSaya, setIngatSaya] = useState(false);
+  // Petunjuk "Lupa password?" dibuat sebagai state, bukan atribut title, agar pesannya juga
+  // terbaca oleh pengguna keyboard dan screen reader (title hanya muncul saat hover mouse).
+  const [tampilBantuanLupa, setTampilBantuanLupa] = useState(false);
   const [sedangKirim, setSedangKirim] = useState(false);
   const [pesanUmum, setPesanUmum] = useState<string | null>(null);
   const [kesalahanField, setKesalahanField] = useState<Record<string, string>>({});
@@ -85,16 +89,22 @@ export function FormLogin() {
   }
 
   return (
-    <form onSubmit={tanganiSubmit} noValidate className="flex flex-col gap-4">
+    <form onSubmit={tanganiSubmit} noValidate className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-semibold text-foreground">Masuk ke LabInventory</h2>
-        <p className="mt-1 text-sm text-inactive">Masukkan email dan kata sandi untuk melanjutkan.</p>
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">Selamat Datang Kembali</h2>
+        <p className="mt-1.5 text-sm text-inactive">
+          Masuk untuk mengelola inventaris laboratorium komputer.
+        </p>
       </div>
 
       {pesanUmum && (
-        <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-delete">
-          {pesanUmum}
-        </p>
+        <div
+          role="alert"
+          className="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-delete"
+        >
+          <IkonPeringatan className="mt-px h-4 w-4 shrink-0" />
+          <span>{pesanUmum}</span>
+        </div>
       )}
 
       <KolomForm id="email" label="Email" kesalahan={kesalahanField.email}>
@@ -119,36 +129,54 @@ export function FormLogin() {
         />
       </KolomForm>
 
-      <div className="flex items-center justify-between text-sm">
-        <label className="flex items-center gap-2 text-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+        <label className="flex cursor-pointer items-center gap-2 text-foreground">
           <input
             type="checkbox"
             checked={ingatSaya}
             onChange={(event) => setIngatSaya(event.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+            className="h-4 w-4 cursor-pointer rounded border-slate-300 text-primary focus-visible:ring-2 focus-visible:ring-primary/40"
           />
           Ingat saya
         </label>
-        <span
-          className="cursor-not-allowed text-inactive"
-          title="Hubungi admin laboratorium untuk mereset password."
+        <button
+          type="button"
+          onClick={() => setTampilBantuanLupa((sebelumnya) => !sebelumnya)}
+          aria-expanded={tampilBantuanLupa}
+          aria-controls="bantuan-lupa-password"
+          className="rounded font-medium text-primary transition-colors hover:text-update hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
         >
           Lupa password?
-        </span>
+        </button>
       </div>
 
-      <button
-        type="submit"
-        disabled={sedangKirim}
-        className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-update disabled:opacity-60"
-      >
+      {tampilBantuanLupa && (
+        <p
+          id="bantuan-lupa-password"
+          className="-mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-3 text-xs leading-relaxed text-inactive"
+        >
+          Reset password hanya dapat dilakukan oleh admin laboratorium melalui menu Manajemen User.
+          Silakan hubungi admin untuk mendapatkan password baru.
+        </p>
+      )}
+
+      <button type="submit" disabled={sedangKirim} className={`${KELAS_TOMBOL_UTAMA} w-full py-2.5`}>
+        {sedangKirim && (
+          <span
+            aria-hidden="true"
+            className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+          />
+        )}
         {sedangKirim ? "Memproses..." : "Masuk"}
       </button>
 
       <p className="text-center text-sm text-inactive">
         Belum punya akun?{" "}
-        <Link href="/register" className="font-medium text-primary hover:underline">
-          Daftar
+        <Link
+          href="/register"
+          className="rounded font-semibold text-primary transition-colors hover:text-update hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        >
+          Daftar sebagai Viewer
         </Link>
       </p>
     </form>

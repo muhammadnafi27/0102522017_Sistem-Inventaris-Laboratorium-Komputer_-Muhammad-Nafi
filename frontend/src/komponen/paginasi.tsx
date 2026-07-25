@@ -29,19 +29,21 @@ export function Paginasi({ meta, onPindahHalaman }: PropsPaginasi) {
           type="button"
           onClick={() => onPindahHalaman(halaman - 1)}
           disabled={halaman <= 1}
-          className="flex items-center gap-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex items-center gap-1 whitespace-nowrap rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <IkonChevronKiri className="h-4 w-4" />
           Sebelumnya
         </button>
-        <span className="px-3 text-sm text-inactive">
+        {/* whitespace-nowrap mencegah teks "Hal. 1 / 1" terpotong menjadi dua baris
+            dan merusak tinggi baris kontrol pagination di layar 390px. */}
+        <span className="px-3 text-sm whitespace-nowrap text-inactive">
           Hal. <span className="font-semibold text-foreground">{halaman}</span> / {totalHalaman}
         </span>
         <button
           type="button"
           onClick={() => onPindahHalaman(halaman + 1)}
           disabled={halaman >= totalHalaman}
-          className="flex items-center gap-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex items-center gap-1 whitespace-nowrap rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Berikutnya
           <IkonChevronKanan className="h-4 w-4" />

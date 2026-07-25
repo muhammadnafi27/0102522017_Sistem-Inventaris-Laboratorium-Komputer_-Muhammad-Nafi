@@ -83,9 +83,14 @@ export function Sidebar({
                     href={item.href}
                     onClick={onTutupDrawerMobile}
                     aria-current={aktif ? "page" : undefined}
+                    // Label teks disembunyikan saat sidebar diciutkan, jadi aria-label selalu
+                    // disertakan agar nama tautan tetap terbaca screen reader; title memberi
+                    // tooltip yang setara untuk pengguna mouse.
+                    aria-label={item.label}
                     title={tertutup ? item.label : undefined}
                     className={[
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70",
                       tertutup ? "md:justify-center" : "",
                       aktif ? "bg-primary text-white" : "text-white/80 hover:bg-white/10 hover:text-white",
                     ].join(" ")}
@@ -103,7 +108,7 @@ export function Sidebar({
           type="button"
           onClick={onToggleTertutup}
           aria-label={tertutup ? "Perluas sidebar" : "Ciutkan sidebar"}
-          className="hidden items-center gap-2 border-t border-white/10 px-4 py-3 text-sm text-white/70 hover:text-white md:flex"
+          className="hidden items-center gap-2 border-t border-white/10 px-4 py-3 text-sm text-white/70 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70 md:flex"
         >
           {tertutup ? <IkonPanelPerluas className="h-5 w-5" /> : <IkonPanelCiutkan className="h-5 w-5" />}
           {!tertutup && <span>Ciutkan Sidebar</span>}

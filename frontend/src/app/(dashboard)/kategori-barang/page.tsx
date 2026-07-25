@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 import { AksesDitolak } from "@/komponen/akses-ditolak";
-import { HalamanSegera } from "@/komponen/halaman-segera";
 import { RoleGuard } from "@/komponen/role-guard";
+import { IsiKategori } from "@/fitur/kategori/isi-kategori";
 
 export const metadata: Metadata = { title: "Kategori Barang - LabInventory" };
 
@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Kategori Barang - LabInventory" };
 export default function HalamanKategoriBarang() {
   return (
     <RoleGuard roles={["admin", "operator"]} fallback={<AksesDitolak />}>
-      <HalamanSegera judul="Kategori Barang" />
+      <IsiKategori />
     </RoleGuard>
   );
 }

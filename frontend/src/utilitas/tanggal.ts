@@ -7,6 +7,17 @@ export function formatTanggal(nilai: string | null | undefined): string {
   return tanggal.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
 }
 
+// Memformat tanggal + jam, dipakai untuk log Aktivitas Sistem yang butuh presisi waktu
+// (bukan hanya tanggal), mis. "25 Juli 2026, 14.30".
+export function formatWaktu(nilai: string | null | undefined): string {
+  if (!nilai) return "-";
+  const tanggal = new Date(nilai.replace(" ", "T"));
+  if (Number.isNaN(tanggal.getTime())) return "-";
+  const tgl = tanggal.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  const jam = tanggal.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+  return `${tgl}, ${jam}`;
+}
+
 // Salam berdasarkan jam lokal untuk sapaan dashboard (Pagi/Siang/Sore/Malam).
 export function salamWaktu(): string {
   const jam = new Date().getHours();

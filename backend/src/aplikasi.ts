@@ -42,7 +42,16 @@ export function buatAplikasi(): Application {
   aplikasi.use(cookieParser());
 
   // Menyajikan file upload statis (foto barang) melalui path /uploads.
-  aplikasi.use("/uploads", express.static("unggahan"));
+  // crossOriginResourcePolicy "cross-origin" WAJIB di sini: helmet() secara default memasang
+  // Cross-Origin-Resource-Policy: same-origin, sehingga <img> di frontend (port 3001) diblokir
+  // browser saat memuat foto dari backend (port 3000) dengan ERR_BLOCKED_BY_RESPONSE.NotSameOrigin.
+  // Pelonggaran dibatasi hanya pada folder gambar publik ini; endpoint /api tetap memakai
+  // header ketat bawaan helmet.
+  aplikasi.use(
+    "/uploads",
+    helmet.crossOriginResourcePolicy({ policy: "cross-origin" }),
+    express.static("unggahan"),
+  );
 
   // Seluruh endpoint REST API diprefix dengan /api sesuai kontrak PRD.
   aplikasi.use("/api", ruteKesehatan);
